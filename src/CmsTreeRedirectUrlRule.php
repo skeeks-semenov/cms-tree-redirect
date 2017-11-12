@@ -3,77 +3,83 @@
  * @author Semenov Alexander <semenov@skeeks.com>
  * @link http://skeeks.com/
  * @copyright 2010 SkeekS (СкикС)
- * @date 15.04.2016
+ * @date 24.05.2015
  */
 namespace skeeks\cms\treeredirect;
-use skeeks\cms\treeredirect\models\CmsTreeRedirect;
-use yii\base\BootstrapInterface;
-use yii\base\Component;
-use yii\web\Application;
+use skeeks\cms\models\CmsContentElement;
+use skeeks\cms\models\Tree;
+use \yii\base\InvalidConfigException;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Url;
 
 /**
- * Class CmsTreeRedirectComponent
- * @package skeeks\cms\treeredirect
+ * Class UrlRuleContentElement
+ * @package skeeks\cms\components\urlRules
  */
-class CmsTreeRedirectComponent extends Component implements BootstrapInterface
+class CmsTreeRedirectUrlRule
+    extends \yii\web\UrlRule
 {
-    /**
-     * @var bool
-     */
-    public $is_enabled = true;
 
-    public function bootstrap($application)
+    public function init()
     {
-        \yii\base\Event::on(\yii\db\ActiveRecord::class, \yii\db\ActiveRecord::EVENT_BEFORE_UPDATE, function(\yii\base\ModelEvent $modelEvent) {
-
-            if (!$this->is_enabled) {
-                return false;
-            }
-            /**
-            * @var $model \skeeks\cms\models\Tree
-            */
-            $model = $modelEvent->sender;
-            if ($modelEvent->sender instanceof \skeeks\cms\models\Tree) {
-                if ($model->isAttributeChanged('code')) {
-
-                    //Если старое значение еще не сохраняли, сохраним сразу
-                    $oldCode = $model->getOldAttribute('code');
-                    if (!CmsTreeRedirect::find()->where([
-                        'cms_tree_id' => $model->id
-                    ])->andWhere(['slug' => $oldCode])->one()) {
-
-                        $redirect = new CmsTreeRedirect();
-                        $redirect->cms_tree_id = $model->id;
-                        $redirect->slug = $oldCode;
-
-                        if (!$redirect->save()) {
-                            $modelEvent->isValid = false;
-                            \Yii::error("Not save old redirect: {$redirect->slug} for id={$model->id}. " . print_r($redirect->errors, true), self::class);
-                        }
-
-                    }
-
-                    //Если такой slug для данного раздела создан
-                    if (CmsTreeRedirect::find()->where([
-                        'cms_tree_id' => $model->id
-                    ])->andWhere(['slug' => $model->code])->one()) {
-                        return true;
-                    }
-
-
-                    $redirect = new CmsTreeRedirect();
-                    $redirect->cms_tree_id = $model->id;
-                    $redirect->slug = $model->code;
-
-                    if (!$redirect->save()) {
-                        $modelEvent->isValid = false;
-                        \Yii::error("Not saved redirect: {$redirect->slug} for id={$model->id}. " . print_r($redirect->errors, true), self::class);
-                    }
-
-                    //throw new \yii\base\Exception('Нет');
-                    //return false;
-                }
-            }
-         });
+        if ($this->name === null)
+        {
+            $this->name = __CLASS__;
+        }
     }
+
+    /**
+     * @param \yii\web\UrlManager $manager
+     * @param string $route
+     * @param array $params
+     * @return bool|string
+     */
+    public function createUrl($manager, $route, $params)
+    {
+        return false;
+    }
+
+    /**
+     * @param \yii\web\UrlManager $manager
+     * @param \yii\web\Request $request
+     * @return array|bool
+     */
+    public function parseRequest($manager, $request)
+    {
+        if ($this->mode === self::CREATION_ONLY) {
+            return false;
+        }
+
+        if (!empty($this->verb) && !in_array($request->getMethod(), $this->verb, true)) {
+            return false;
+        }
+
+        $pathInfo           = $request->getPathInfo();
+        if ($this->host !== null) {
+            $pathInfo = strtolower($request->getHostInfo()) . ($pathInfo === '' ? '' : '/' . $pathInfo);
+        }
+
+
+        $params             = $request->getQueryParams();
+        $suffix             = (string)($this->suffix === null ? $manager->suffix : $this->suffix);
+        $treeNode           = null;
+
+        if (!$pathInfo)
+        {
+            return false;
+        }
+
+        if (!preg_match('/\/(?<id>\d+)\-(?<code>\S+)$/i', "/" . $pathInfo, $matches))
+        {
+            return false;
+        }
+
+
+        return ['cms/content-element/view', [
+            'id'    => $matches['id'],
+            'code'  => $matches['code']
+        ]];
+    }
+
+
 }

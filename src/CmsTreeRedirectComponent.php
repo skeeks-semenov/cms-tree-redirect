@@ -9,6 +9,7 @@ namespace skeeks\cms\treeredirect;
 use skeeks\cms\treeredirect\models\CmsTreeRedirect;
 use yii\base\BootstrapInterface;
 use yii\base\Component;
+use yii\helpers\ArrayHelper;
 use yii\web\Application;
 
 /**
@@ -74,6 +75,45 @@ class CmsTreeRedirectComponent extends Component implements BootstrapInterface
                     //return false;
                 }
             }
-         });
+        });
+
+        if (\Yii::$app instanceof Application) {
+            \Yii::$app->on(Application::EVENT_AFTER_ACTION, function ($e) {
+                if (\Yii::$app->requestedAction->controller->uniqueId != 'cms/error') {
+                    return true;
+                }
+
+                if (!$this->is_enabled) {
+                    return false;
+                }
+
+
+                $current_url = \Yii::$app->getRequest()->getAbsoluteUrl();
+                $parsed_current_url = parse_url($current_url);
+                $current_path = ArrayHelper::getValue($parsed_current_url, 'path', '');
+
+
+                $findedRedirect = null;
+                $parts = preg_split('/[^\-\_a-zA-Z0-9]+/iu', $current_path, -1, PREG_SPLIT_NO_EMPTY);
+                $parts = array_reverse($parts);
+
+                foreach ($parts as $part) {
+                    $treeRedirect = CmsTreeRedirect::find()->andWhere(['slug' => $part])->one();
+                    if ($treeRedirect) {
+                        $findedRedirect = $treeRedirect;
+                        break;
+                    }
+                }
+
+                /**
+                 * @var $findedRedirect CmsTreeRedirect
+                 */
+                if ($findedRedirect) {
+                    \Yii::$app->response->redirect($findedRedirect->cmsTree->url, 301);
+                };
+
+
+            });
+        }
     }
 }
