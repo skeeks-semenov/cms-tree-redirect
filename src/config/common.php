@@ -6,11 +6,11 @@
  * @date 12.11.2017
  */
 return [
-    'bootstrap' => ['cmstreeredirect'],
+    'bootstrap' => ['cmsTreeRedirect'],
 
     'components' => [
-        'cmstreeredirect' => [
-            'class' => 'skeeks\cms\treeredirect\CmsTreeRedirectComponent.php'
+        'cmsTreeRedirect' => [
+            'class' => 'skeeks\cms\treeredirect\CmsTreeRedirectComponent'
         ]
     ]
 ];
