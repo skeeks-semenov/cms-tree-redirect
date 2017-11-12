@@ -1,0 +1,39 @@
+{
+	"name": "skeeks/cms-tree-redirect",
+	"description": "Agents for SkeekS CMS",
+	"keywords": ["yii", "skeeks", "framework", "component", "agent"],
+    	"homepage": "https://cms.skeeks.com/",
+	"type": "yii2-extension",
+	"license": "GPL-3.0+",
+	"support": {
+        "issues": "https://skeeks.com/",
+        "wiki": "https://cms.skeeks.com/docs/",
+        "source": "https://github.com/skeeks-cms/cms-agent"
+    },
+	"authors": [
+		{
+			"name": "Semenov Alexander",
+			"email": "semenov@skeeks.com"
+		}
+	],
+	"require": {
+		"skeeks/cms": "~5.0 || dev-master"
+	},
+    "autoload": {
+        "psr-4": {
+            "skeeks\\cms\\treeredirect\\": "src/"
+        }
+    },
+	"extra": {
+        "config-plugin": {
+            "console": [
+				"src/config/common.php",
+				"src/config/console.php"
+			],
+            "web": [
+				"src/config/common.php",
+				"src/config/web.php"
+			]
+        }
+    }
+}
