@@ -9,6 +9,7 @@ namespace skeeks\cms\treeredirect;
 use skeeks\cms\treeredirect\models\CmsTreeRedirect;
 use yii\base\BootstrapInterface;
 use yii\base\Component;
+use yii\db\AfterSaveEvent;
 use yii\helpers\ArrayHelper;
 use yii\web\Application;
 
@@ -22,9 +23,60 @@ class CmsTreeRedirectComponent extends Component implements BootstrapInterface
      * @var bool
      */
     public $is_enabled = true;
+    
+    protected $_slugRedurect = null;
 
     public function bootstrap($application)
     {
+        \yii\base\Event::on(\yii\db\ActiveRecord::class, \yii\db\ActiveRecord::EVENT_AFTER_INSERT, function(AfterSaveEvent $modelEvent)  {
+            if (!$this->is_enabled) {
+                return false;
+            }
+
+
+            /**
+            * @var $model \skeeks\cms\models\Tree
+            */
+            $model = $modelEvent->sender;
+            if ($modelEvent->sender instanceof \skeeks\cms\models\Tree) {
+
+                $this->_slugRedurect->cms_tree_id = $model->id;
+                if (!$this->_slugRedurect->save()) {
+                    //$modelEvent->isValid = false;
+                    \Yii::error("Not saved redirect: {$this->_slugRedurect->slug} for id={$model->id}. " . print_r($this->_slugRedurect->errors, true), self::class);
+                }
+
+            }
+
+        });
+
+        \yii\base\Event::on(\yii\db\ActiveRecord::class, \yii\db\ActiveRecord::EVENT_BEFORE_INSERT, function(\yii\base\ModelEvent $modelEvent) {
+            if (!$this->is_enabled) {
+                return false;
+            }
+
+            /**
+            * @var $model \skeeks\cms\models\Tree
+            */
+            $model = $modelEvent->sender;
+            if ($modelEvent->sender instanceof \skeeks\cms\models\Tree) {
+
+
+                if ($redirect = CmsTreeRedirect::find()->andWhere(['slug' => $model->code])->one()) {
+
+                    return false;
+                    $modelEvent->isValid = false;
+                    \Yii::warning("Exist slug: {$redirect->slug}", self::class);
+                }
+
+                $redirect = new CmsTreeRedirect();
+                $redirect->slug = $model->code;
+
+                $this->_slugRedurect = $redirect;
+            }
+
+        });
+
         \yii\base\Event::on(\yii\db\ActiveRecord::class, \yii\db\ActiveRecord::EVENT_BEFORE_UPDATE, function(\yii\base\ModelEvent $modelEvent) {
 
             if (!$this->is_enabled) {
@@ -98,6 +150,7 @@ class CmsTreeRedirectComponent extends Component implements BootstrapInterface
                 $parts = array_reverse($parts);
 
                 foreach ($parts as $part) {
+
                     $treeRedirect = CmsTreeRedirect::find()->andWhere(['slug' => $part])->one();
                     if ($treeRedirect) {
                         $findedRedirect = $treeRedirect;
